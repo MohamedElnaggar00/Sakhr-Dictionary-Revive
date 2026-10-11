@@ -121,3 +121,12 @@ framework-dependent، ومثبّت Windows App Runtime مضمّن في ملف ا
 MIT
 
 </div>
+
+
+## النسخة المستقلة / Self-contained edition
+
+النسخة المستقلة هي النسخة الافتراضية الآن. تتضمن ملفات .NET وWindows App SDK وVisual C++ المطلوبة. اختر الملف الذي يحتوي اسمه على `self-contained`: نسخة محمولة بصيغة ZIP أو مثبت للمستخدم الحالي دون صلاحيات مسؤول. فك ضغط جميع الملفات قبل تشغيل النسخة المحمولة، واحتفظ بها معًا.
+
+تعمل هذه النسخة على Windows 10 الإصدار 1809 أو أحدث وWindows 11 بمعمارية x64. لا يلزم تثبيت Windows App Runtime بشكل منفصل. الإصدارات السابقة محفوظة للأرشفة؛ أُزيلت التنزيلات المعتمدة على بيئة تشغيل خارجية من الإصدار الحالي.
+
+Self-contained is now the default. The portable ZIP and per-user installer bundle .NET, Windows App SDK and VC runtime files. No separate runtime installation is needed. Extract the entire ZIP and keep all files together. Windows 10 1809+ / Windows 11 x64. Older releases remain archived.
