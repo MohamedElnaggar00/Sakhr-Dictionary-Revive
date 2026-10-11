@@ -1,0 +1,18 @@
+[
+  {
+    "ModuleName": "hostfxr.dll",
+    "FileName": "D:\\a\\Sakhr-Dictionary-Revive\\Sakhr-Dictionary-Revive\\publish\\hostfxr.dll"
+  },
+  {
+    "ModuleName": "coreclr.dll",
+    "FileName": "D:\\a\\Sakhr-Dictionary-Revive\\Sakhr-Dictionary-Revive\\publish\\coreclr.dll"
+  },
+  {
+    "ModuleName": "Microsoft.WindowsAppRuntime.dll",
+    "FileName": "D:\\a\\Sakhr-Dictionary-Revive\\Sakhr-Dictionary-Revive\\publish\\Microsoft.WindowsAppRuntime.dll"
+  },
+  {
+    "ModuleName": "Microsoft.WinUI.dll",
+    "FileName": "D:\\a\\Sakhr-Dictionary-Revive\\Sakhr-Dictionary-Revive\\publish\\Microsoft.WinUI.dll"
+  }
+]
