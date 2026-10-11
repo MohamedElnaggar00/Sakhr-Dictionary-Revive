@@ -55,6 +55,7 @@ jobs:
           }
           $modules | Select-Object ModuleName,FileName | ConvertTo-Json | Set-Content dependency-proof.json
           Add-Type -AssemblyName System.Drawing,System.Windows.Forms
+          Add-Type -AssemblyName System.Drawing,System.Windows.Forms
           $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
           $bitmap = New-Object System.Drawing.Bitmap $bounds.Width,$bounds.Height
           $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
@@ -129,6 +130,7 @@ jobs:
           $p = Start-Process "$root/SakhrDictionaryRevive.exe" -PassThru
           Start-Sleep -Seconds 10
           if ($p.HasExited) { throw "Installed launch failed: $($p.ExitCode)" }
+          Add-Type -AssemblyName System.Drawing,System.Windows.Forms
           $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
           $bitmap = New-Object System.Drawing.Bitmap $bounds.Width,$bounds.Height
           $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
