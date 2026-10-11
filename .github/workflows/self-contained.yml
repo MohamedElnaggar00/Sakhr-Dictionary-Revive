@@ -1,4 +1,4 @@
-name: Add self-contained downloads
+name: Build clean-named downloads
 on:
   push:
     paths: ['.github/workflows/self-contained.yml']
@@ -59,23 +59,23 @@ jobs:
           $bitmap = New-Object System.Drawing.Bitmap $bounds.Width,$bounds.Height
           $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
           $graphics.CopyFromScreen($bounds.Location,[System.Drawing.Point]::Empty,$bounds.Size)
-          $bitmap.Save("$PWD/app-self-contained.png")
+          $bitmap.Save("$PWD/app-launch.png")
           $graphics.Dispose(); $bitmap.Dispose()
           Stop-Process -Id $p.Id -Force
       - name: Package portable archive and per-user installer
         shell: pwsh
         run: |
           @'
-          SakhrDictionaryRevive 1.0.2 - self-contained x64
+          SakhrDictionaryRevive 1.0.2 - x64
           Windows 10 version 1809 or later / Windows 11 (x64).
           Extract the entire ZIP before running SakhrDictionaryRevive.exe. Keep all files together.
           .NET, Windows App SDK, and VC runtime files are bundled. No runtime installation is required.
-          The self-contained installer installs for the current user without administrator rights.
-          Existing downloads remain available separately.
+          The installer installs for the current user without administrator rights.
+          Portable ZIP and installer include the same bundled dependencies.
           brought to you by Instinct - https://instinct.com
-          '@ | Set-Content publish/SELF-CONTAINED-README.txt -Encoding utf8
+          '@ | Set-Content publish/README.txt -Encoding utf8
           Copy-Item LICENSE publish/LICENSE.txt
-          Compress-Archive -Path publish/* -DestinationPath 'SakhrDictionaryRevive-v1.0.2-self-contained-portable-win-x64.zip'
+          Compress-Archive -Path publish/* -DestinationPath 'SakhrDictionaryRevive-v1.0.2-portable-win-x64.zip'
           @'
           [Setup]
           AppId=SakhrDictionaryRevive-SelfContained
@@ -84,12 +84,12 @@ jobs:
           AppPublisher=Mohamed Elnaggar
           AppPublisherURL=https://instinct.com
           DefaultDirName={localappdata}\Programs\SakhrDictionaryRevive-SelfContained
-          DefaultGroupName=Sakhr Dictionary Revive (Self-contained)
+          DefaultGroupName=Sakhr Dictionary Revive
           PrivilegesRequired=lowest
           ArchitecturesAllowed=x64compatible
           ArchitecturesInstallIn64BitMode=x64compatible
           OutputDir=out
-          OutputBaseFilename=SakhrDictionaryRevive-v1.0.2-self-contained-installer-win-x64
+          OutputBaseFilename=SakhrDictionaryRevive-v1.0.2-installer-win-x64
           Compression=lzma2
           SolidCompression=yes
           WizardStyle=modern
@@ -100,8 +100,11 @@ jobs:
           [Files]
           Source: "publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
           [Icons]
-          Name: "{autoprograms}\Sakhr Dictionary Revive (Self-contained)"; Filename: "{app}\SakhrDictionaryRevive.exe"; WorkingDir: "{app}"
-          Name: "{autodesktop}\Sakhr Dictionary Revive (Self-contained)"; Filename: "{app}\SakhrDictionaryRevive.exe"; WorkingDir: "{app}"
+          Name: "{autoprograms}\Sakhr Dictionary Revive"; Filename: "{app}\SakhrDictionaryRevive.exe"; WorkingDir: "{app}"
+          Name: "{autodesktop}\Sakhr Dictionary Revive"; Filename: "{app}\SakhrDictionaryRevive.exe"; WorkingDir: "{app}"
+          [InstallDelete]
+          Type: files; Name: "{autodesktop}\Sakhr Dictionary Revive (Self-contained).lnk"
+          Type: files; Name: "{autoprograms}\Sakhr Dictionary Revive (Self-contained).lnk"
           [Run]
           Filename: "{app}\SakhrDictionaryRevive.exe"; Description: "Launch Sakhr Dictionary Revive"; Flags: nowait postinstall skipifsilent
           [Messages]
@@ -113,38 +116,51 @@ jobs:
       - name: Verify installer extraction and installed launch
         shell: pwsh
         run: |
-          $p = Start-Process './SakhrDictionaryRevive-v1.0.2-self-contained-installer-win-x64.exe' -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait -PassThru
+          $p = Start-Process './SakhrDictionaryRevive-v1.0.2-installer-win-x64.exe' -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw "Installer failed: $($p.ExitCode)" }
           $root = "$env:LOCALAPPDATA/Programs/SakhrDictionaryRevive-SelfContained"
           if (-not (Test-Path "$root/SakhrDictionaryRevive.exe")) { throw 'Per-user install missing' }
+          $desktop = [Environment]::GetFolderPath('Desktop')
+          $programs = [Environment]::GetFolderPath('Programs')
+          foreach ($dir in @($desktop,$programs)) {
+            if (-not (Test-Path "$dir/Sakhr Dictionary Revive.lnk")) { throw 'Clean shortcut missing' }
+            if (Test-Path "$dir/Sakhr Dictionary Revive (Self-contained).lnk") { throw 'Old shortcut remains' }
+          }
           $p = Start-Process "$root/SakhrDictionaryRevive.exe" -PassThru
           Start-Sleep -Seconds 10
           if ($p.HasExited) { throw "Installed launch failed: $($p.ExitCode)" }
+          $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bitmap = New-Object System.Drawing.Bitmap $bounds.Width,$bounds.Height
+          $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+          $graphics.CopyFromScreen($bounds.Location,[System.Drawing.Point]::Empty,$bounds.Size)
+          $bitmap.Save("$PWD/installed-launch.png")
+          $graphics.Dispose(); $bitmap.Dispose()
           Stop-Process -Id $p.Id -Force
       - uses: actions/upload-artifact@v4
         with:
-          name: self-contained-verified
+          name: verified-downloads
           path: |
-            SakhrDictionaryRevive-v1.0.2-self-contained-*.zip
-            SakhrDictionaryRevive-v1.0.2-self-contained-*.exe
-            app-self-contained.png
+            SakhrDictionaryRevive-v1.0.2-*.zip
+            SakhrDictionaryRevive-v1.0.2-*.exe
+            app-launch.png
             dependency-proof.json
+            installed-launch.png
       - name: Save launch screenshot for visual review
         if: github.event_name == 'push'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $d = "$env:RUNNER_TEMP/self-contained-review"
+          $d = "$env:RUNNER_TEMP/clean-names-review"
           New-Item -ItemType Directory -Force $d | Out-Null
-          Copy-Item app-self-contained.png,dependency-proof.json $d
+          Copy-Item app-launch.png,installed-launch.png,dependency-proof.json $d
           Push-Location $d
           git init -q
           git config user.name github-actions
           git config user.email actions@github.com
           git add .
           git commit -qm 'Self-contained launch evidence'
-          git -c "http.extraheader=AUTHORIZATION: basic $([Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes('x-access-token:' + $env:GH_TOKEN)))" push "https://github.com/${{ github.repository }}.git" HEAD:refs/heads/self-contained-review
+          git -c "http.extraheader=AUTHORIZATION: basic $([Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes('x-access-token:' + $env:GH_TOKEN)))" push "https://github.com/${{ github.repository }}.git" HEAD:refs/heads/clean-names-review
           if ($LASTEXITCODE -ne 0) { throw 'Review evidence upload failed' }
           Pop-Location
       - name: Add new assets without replacing old downloads
@@ -153,9 +169,19 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload v1.0.2 './SakhrDictionaryRevive-v1.0.2-self-contained-portable-win-x64.zip' './SakhrDictionaryRevive-v1.0.2-self-contained-installer-win-x64.exe'
+          gh release upload v1.0.2 './SakhrDictionaryRevive-v1.0.2-portable-win-x64.zip' './SakhrDictionaryRevive-v1.0.2-installer-win-x64.exe'
           if ($LASTEXITCODE -ne 0) { throw 'Upload failed; existing assets were not replaced' }
-          $body = gh release view v1.0.2 --json body --jq .body
-          $body + "`n`n## Self-contained downloads`n- Added portable ZIP and per-user installer with bundled .NET, Windows App SDK and VC runtime files. No separate runtime installation is required.`n- Windows 10 1809+ / Windows 11 x64. Existing downloads are unchanged.`n`n## التنزيلات المستقلة`n- أُضيفت نسخة محمولة ومثبت للمستخدم الحالي يتضمنان ملفات التشغيل المطلوبة، دون تثبيت بيئة تشغيل منفصلة أو صلاحيات مسؤول.`n- Windows 10 1809 أو أحدث وWindows 11 بمعمارية x64. بقيت التنزيلات السابقة دون تغيير." | Set-Content release-notes.md -Encoding utf8
+          gh release view v1.0.2 --json body --jq .body > release-notes.md
+          $body = Get-Content release-notes.md -Raw
+          $body = $body.Replace('Self-contained downloads','Downloads').Replace('self-contained', 'bundled-runtime').Replace('Self-contained', 'Bundled-runtime')
+          $body | Set-Content release-notes.md -Encoding utf8
           gh release edit v1.0.2 --notes-file release-notes.md
           if ($LASTEXITCODE -ne 0) { throw 'Notes update failed' }
+          gh release view v1.0.2 --json assets > assets.json
+          $assets = (Get-Content assets.json -Raw | ConvertFrom-Json).assets
+          foreach ($name in @('SakhrDictionaryRevive-v1.0.2-portable-win-x64.zip','SakhrDictionaryRevive-v1.0.2-installer-win-x64.exe')) {
+            if (-not ($assets | Where-Object { $_.name -eq $name -and $_.size -gt 1000000 })) { throw "Missing replacement $name" }
+          }
+          foreach ($name in @('SakhrDictionaryRevive-v1.0.2-self-contained-portable-win-x64.zip','SakhrDictionaryRevive-v1.0.2-self-contained-installer-win-x64.exe')) {
+            if ($assets | Where-Object name -eq $name) { gh release delete-asset v1.0.2 $name --yes; if ($LASTEXITCODE -ne 0) { throw 'Suffix cleanup failed' } }
+          }
