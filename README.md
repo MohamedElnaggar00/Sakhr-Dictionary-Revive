@@ -130,3 +130,12 @@ MIT
 تعمل هذه النسخة على Windows 10 الإصدار 1809 أو أحدث وWindows 11 بمعمارية x64. لا يلزم تثبيت Windows App Runtime بشكل منفصل. الإصدارات السابقة محفوظة للأرشفة؛ أُزيلت التنزيلات المعتمدة على بيئة تشغيل خارجية من الإصدار الحالي.
 
 Both downloads include all required runtime files. The portable ZIP and per-user installer bundle .NET, Windows App SDK and VC runtime files. No separate runtime installation is needed. Extract the entire ZIP and keep all files together. Windows 10 1809+ / Windows 11 x64. Older releases remain archived.
+
+
+### Three download options
+
+- **Portable ZIP:** extract all files and run the app.
+- **Installer:** installs the bundled-runtime app for the current user, without administrator rights.
+- **Full offline ZIP:** the same installer plus Microsoft's original offline installers for .NET Desktop Runtime, Windows App Runtime and Visual C++ x64. Extract it and run `Install.exe`. The app already includes its runtime files, so installing the optional system runtimes is not required.
+
+All three options run without a separate runtime download. The additional system-runtime installers in the full offline kit may require administrator rights if you choose to run them.
