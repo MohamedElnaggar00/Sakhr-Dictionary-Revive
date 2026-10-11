@@ -38,6 +38,7 @@ jobs:
           foreach ($file in @('SakhrDictionaryRevive.exe','Microsoft.WinUI.dll','Microsoft.WindowsAppRuntime.dll','coreclr.dll','hostfxr.dll','vcruntime140.dll','msvcp140.dll')) {
             if (-not (Test-Path "publish/$file")) { throw "Missing bundled dependency: $file" }
           }
+          Import-Module Appx -UseWindowsPowerShell
           Get-AppxPackage '*WindowsAppRuntime*' | Remove-AppxPackage -ErrorAction Stop
           if (Get-AppxPackage '*WindowsAppRuntime*') { throw 'Shared Windows App Runtime remains installed for runner user' }
           $env:DOTNET_MULTILEVEL_LOOKUP = '0'
