@@ -1,0 +1,33 @@
+name: Remove superseded current downloads
+on:
+  push:
+    paths: ['.github/workflows/current-asset-cleanup.yml']
+permissions:
+  contents: write
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate replacements then remove only obsolete current assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh release view v1.0.2 --json assets > assets.json
+          for name in 'SakhrDictionaryRevive-v1.0.2-self-contained-portable-win-x64.zip' 'SakhrDictionaryRevive-v1.0.2-self-contained-installer-win-x64.exe'; do
+            jq -e --arg name "$name" '.assets[] | select(.name == $name and .size > 1000000)' assets.json >/dev/null
+          done
+          for name in 'SakhrDictionaryRevive-v1.0.2-portable-win-x64.zip' 'SakhrDictionaryRevive-v1.0.2-installer-win-x64.exe' 'SakhrDictionaryRevive-v1.0.2-installer-.NET-runtime-dependent-win-x64.exe'; do
+            if jq -e --arg name "$name" '.assets[] | select(.name == $name)' assets.json >/dev/null; then
+              gh release delete-asset v1.0.2 "$name" --yes
+            fi
+          done
+          gh release view v1.0.2 --json body --jq .body > notes.md
+          python3 - <<'PYCODE'
+          from pathlib import Path
+          p = Path('notes.md')
+          text = p.read_text().replace('Existing downloads are unchanged.', 'The superseded runtime-dependent downloads have been removed from this release. Self-contained is now the default.').replace('بقيت التنزيلات السابقة دون تغيير.', 'أُزيلت التنزيلات السابقة المعتمدة على بيئة تشغيل خارجية من هذا الإصدار. النسخة المستقلة هي النسخة الافتراضية الآن.')
+          p.write_text(text)
+          PYCODE
+          gh release edit v1.0.2 --notes-file notes.md
