@@ -146,6 +146,39 @@ jobs:
           $bitmap.Save("$PWD/installed-launch.png")
           $graphics.Dispose(); $bitmap.Dispose()
           Stop-Process -Id $p.Id -Force
+      - name: Build full offline kit with signed Microsoft installers
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force offline/runtimes | Out-Null
+          Copy-Item 'SakhrDictionaryRevive-v${{ steps.version.outputs.value }}-installer-win-x64.exe' offline/Install.exe
+          $downloads = @(
+            @{ url='https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/8.0.31/windowsdesktop-runtime-8.0.31-win-x64.exe'; name='windowsdesktop-runtime-x64.exe'; sha512='605189223cf0a64bfb5453520b794d1d386a97c7e65e3944feaf9214db1a8b247f66c569265aef4204447baf5b5ff19559c323d887e1318f17deb28a5af0fa12' },
+            @{ url='https://aka.ms/windowsappsdk/1.6/1.6.250602001/windowsappruntimeinstall-x64.exe'; name='windowsappruntimeinstall-x64.exe'; sha512='' },
+            @{ url='https://aka.ms/vc14/vc_redist.x64.exe'; name='vc_redist.x64.exe'; sha512='' }
+          )
+          foreach ($file in $downloads) {
+            $path = "offline/runtimes/$($file.name)"
+            Invoke-WebRequest $file.url -OutFile $path
+            $sig = Get-AuthenticodeSignature $path
+            if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notmatch 'Microsoft Corporation') { throw "Invalid Microsoft signature: $path" }
+            if ($file.sha512 -and (Get-FileHash $path -Algorithm SHA512).Hash -ne $file.sha512) { throw '.NET checksum mismatch' }
+          }
+          @'
+          Full offline kit
+          Run Install.exe to install the app without internet or administrator rights.
+          The app includes .NET, Windows App SDK and VC runtime files. No separate runtime installation is required.
+          The runtimes folder additionally contains the original signed Microsoft offline installers for .NET Desktop Runtime 8, Windows App Runtime 1.6 and Visual C++ x64.
+          These optional system installers can require administrator rights. They are not needed to run this app.
+          '@ | Set-Content offline/README.txt -Encoding utf8
+          Get-ChildItem offline -Recurse -File | Get-FileHash -Algorithm SHA256 | Select-Object Path,Hash | ConvertTo-Json | Set-Content offline/SHA256.json
+          Compress-Archive offline/* 'SakhrDictionaryRevive-v${{ steps.version.outputs.value }}-full-offline-win-x64.zip'
+          Expand-Archive 'SakhrDictionaryRevive-v${{ steps.version.outputs.value }}-full-offline-win-x64.zip' offline-test
+          $test = Start-Process './offline-test/Install.exe' -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait -PassThru
+          if ($test.ExitCode -ne 0) { throw 'Offline kit install failed' }
+          $app = Start-Process "$env:LOCALAPPDATA/Programs/SakhrDictionaryRevive-SelfContained/SakhrDictionaryRevive.exe" -PassThru
+          Start-Sleep -Seconds 10
+          if ($app.HasExited) { throw 'Offline kit app launch failed' }
+          Stop-Process -Id $app.Id -Force
       - uses: actions/upload-artifact@v4
         with:
           name: verified-downloads
@@ -163,7 +196,7 @@ jobs:
         run: |
           gh release view v${{ steps.version.outputs.value }} --json tagName | Out-Null
           if ($LASTEXITCODE -ne 0) { gh release create v${{ steps.version.outputs.value }} --draft --title 'v${{ steps.version.outputs.value }}' --notes 'Self-contained release: bundled runtimes, portable archive and per-user installer.' }
-          gh release upload v${{ steps.version.outputs.value }} './SakhrDictionaryRevive-v${{ steps.version.outputs.value }}-portable-win-x64.zip' './SakhrDictionaryRevive-v${{ steps.version.outputs.value }}-installer-win-x64.exe'
+          gh release upload v${{ steps.version.outputs.value }} './SakhrDictionaryRevive-v${{ steps.version.outputs.value }}-portable-win-x64.zip' './SakhrDictionaryRevive-v${{ steps.version.outputs.value }}-installer-win-x64.exe' './SakhrDictionaryRevive-v${{ steps.version.outputs.value }}-full-offline-win-x64.zip'
           if ($LASTEXITCODE -ne 0) { throw 'Upload failed; existing assets were not replaced' }
           $body = gh release view v${{ steps.version.outputs.value }} --json body --jq .body
           $body + "`n`n## Self-contained downloads`n- Added portable ZIP and per-user installer with bundled .NET, Windows App SDK and VC runtime files. No separate runtime installation is required.`n- Windows 10 1809+ / Windows 11 x64. Self-contained is the default distribution.`n`n## التنزيلات المستقلة`n- أُضيفت نسخة محمولة ومثبت للمستخدم الحالي يتضمنان ملفات التشغيل المطلوبة، دون تثبيت بيئة تشغيل منفصلة أو صلاحيات مسؤول.`n- Windows 10 1809 أو أحدث وWindows 11 بمعمارية x64. النسخة المستقلة هي النسخة الافتراضية للتوزيع." | Set-Content release-notes.md -Encoding utf8
